@@ -137,7 +137,10 @@ const AuthForm = ({ mode }) => {
         });
 
         // 3. Send email verification
-        await sendEmailVerification(user);
+        await sendEmailVerification(user, {
+          url: "http://localhost:3000",
+          handleCodeInApp: true,
+        });
 
         toast.success(
           "Registration successful! Please verify your email to activate your account."

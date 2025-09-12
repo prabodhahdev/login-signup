@@ -6,12 +6,14 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import ActionHandler from './pages/ActionHandler';
 
 function App() {
   return (
     <Router>
       <Routes>  
         <Route path="/" element={<LoginPage />} />
+        <Route path="/action" element={<ActionHandler />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/dashboard" element={<Dashboard/>} />
