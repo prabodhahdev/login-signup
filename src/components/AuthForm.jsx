@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, {  useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../firebase/firebase";
 import {
@@ -18,8 +18,13 @@ import {
   collection,
   where,
   getDocs,
+  updateDoc,
 } from "firebase/firestore";
 import { toast } from "react-toastify";
+
+const LOCK_DURATION = 1 * 60 * 1000; // 1 minutes
+const MAX_FAILED_ATTEMPTS = 2;
+const MAX_LOCKOUTS_PER_DAY = 3;
 
 const AuthForm = ({ mode }) => {
   const navigate = useNavigate();
@@ -47,7 +52,8 @@ const AuthForm = ({ mode }) => {
     else navigate("/dashboard");
   };
 
-  // validate functions
+  // ================================ Form Validation Functions ============================================
+  // Functions to validate each input field (first name, last name, email, phone, password, confirm password)
   const validateFirstName = (value) => {
     const regex = /^[A-Za-z]{2,50}$/;
     setFirstNameError(
@@ -89,7 +95,89 @@ const AuthForm = ({ mode }) => {
     setConfirmPasswordError(value === password ? "" : "Passwords do not match");
   };
 
-  // Handle form submission
+  // ================================ Account Lock Handling ============================================
+  // Checks if the account is currently locked, prevents login if locked,
+  // auto-unlocks if lock duration passed and no admin unlock required
+  // NOTE: When manually unlocking a user account as an admin, make sure to update the following fields:
+  // isLocked: false
+  // adminUnlockRequired: false
+  // lockoutCount: 0
+  // failedAttempts: 0
+  // lockUntil: null
+  // This ensures the account can log in normally and automatic lock logic works as expected.
+  const checkLockStatus = async (userId) => {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) return { isLocked: false };
+
+    const userData = userSnap.data();
+    const now = Date.now();
+
+    if (userData.isLocked) {
+      // Check if timeout passed
+      if (
+        userData.lockUntil &&
+        now > userData.lockUntil &&
+        !userData.adminUnlockRequired
+      ) {
+        // auto unlock
+        await updateDoc(userRef, {
+          isLocked: false,
+          failedAttempts: 0,
+          lockUntil: null,
+        });
+        return { isLocked: false };
+      }
+
+      // Still locked
+      return {
+        isLocked: true,
+        adminUnlockRequired: userData.adminUnlockRequired || false,
+      };
+    }
+
+    return { isLocked: false };
+  };
+
+  // ================================ Record Failed Attempt Handling ===================================
+  // Records a failed login attempt, locks account if max attempts reached
+
+  const recordFailedAttempt = async (userId) => {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) return;
+    const userData = userSnap.data();
+
+    const newFailed = (userData.failedAttempts || 0) + 1;
+    let update = { failedAttempts: newFailed };
+
+    if (newFailed >= MAX_FAILED_ATTEMPTS) {
+      // apply lock
+      const now = Date.now();
+      const lockouts = (userData.lockoutCount || 0) + 1;
+
+      update = {
+        ...update,
+        isLocked: true,
+        lockUntil: now + LOCK_DURATION,
+        failedAttempts: 0,
+        lockoutCount: lockouts,
+      };
+
+      // If too many lockouts in 24h -> admin unlock required
+      if (lockouts >= MAX_LOCKOUTS_PER_DAY) {
+        update.adminUnlockRequired = true;
+      }
+    }
+
+    await updateDoc(userRef, update);
+  };
+
+  // ================================ Form Handling ====================================================
+  // Main submit handler for both login and signup
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -134,6 +222,10 @@ const AuthForm = ({ mode }) => {
           email,
           profilePic: "",
           role: "user",
+          failedAttempts: 0, // track login failures
+          lockedUntil: null, // timestamp until auto unlock
+          createdAt: new Date(),
+          updatedAt: new Date(),
         });
 
         // 3. Send email verification
@@ -171,7 +263,7 @@ const AuthForm = ({ mode }) => {
         }
       }
     } else {
-      // LOGIN
+      // LOGIN MODE
       try {
         // Set persistence based on "Remember Me" checkbox
         await setPersistence(
@@ -179,13 +271,40 @@ const AuthForm = ({ mode }) => {
           rememberMe ? browserLocalPersistence : browserSessionPersistence
         );
 
+        // Pre-check if account is locked
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("email", "==", email));
+        const querySnap = await getDocs(q);
+
+        // if email not found, skip lock check to avoid info leak
+        if (!querySnap.empty) {
+          const userDoc = querySnap.docs[0];
+          const lockStatus = await checkLockStatus(userDoc.id);
+
+          if (lockStatus.isLocked) {
+            if (lockStatus.adminUnlockRequired) {
+              toast.error(
+                "Your account is locked. Please contact admin to unlock."
+              );
+            } else {
+              toast.error(
+                `User account temporarily locked due to multiple failed login attempts.`
+              );
+            }
+            setEmail("");
+            setPassword("");
+            return;
+          }
+        }
+
+        // Attempt sign-in
         const userCredential = await signInWithEmailAndPassword(
           auth,
           email,
           password
         );
         const user = userCredential.user;
-
+        // Check email verification
         if (!user.emailVerified) {
           setError(
             "Your email is not verified yet. Please check your inbox or spam folder."
@@ -199,19 +318,40 @@ const AuthForm = ({ mode }) => {
 
           return;
         }
-
+        // Fetch user role from Firestore
         const docRef = doc(db, "users", userCredential.user.uid);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-          const userRole = docSnap.data().role;
+          const userData = docSnap.data();
+
+          // Store login info based on rememberMe
+          if (rememberMe) {
+            localStorage.setItem("role", userData.role);
+            localStorage.setItem("isLoggedIn", "true");
+          } else {
+            sessionStorage.setItem("role", userData.role);
+            sessionStorage.setItem("isLoggedIn", "true");
+          }
+
+          // Reset failedAttempts & lockedUntil after a successful login
+          await updateDoc(docRef, { failedAttempts: 0, lockedUntil: null });
+          console.log(userData);
+
           toast.success("Login successful!");
-          redirectBasedOnRole(userRole);
+          redirectBasedOnRole(userData.role);
         } else {
           setError("User role not found");
           toast.error("User role not found");
         }
       } catch (err) {
+        // Handle login errors
+        console.log(err);
+        if (err.code === "auth/too-many-requests") {
+          toast.error(
+            "Too many login attempts detected. Please wait a few minutes or contact admin."
+          );
+        }
         if (
           err.code === "auth/user-not-found" ||
           err.code === "auth/wrong-password" ||
@@ -219,6 +359,14 @@ const AuthForm = ({ mode }) => {
         ) {
           setError("Invalid username or password. Please try again.");
           toast.error("Invalid username or password. Please try again.");
+
+          // record failed attempt
+          const usersRef = collection(db, "users");
+          const q = query(usersRef, where("email", "==", email));
+          const querySnap = await getDocs(q);
+          if (!querySnap.empty) {
+            await recordFailedAttempt(querySnap.docs[0].id);
+          }
         } else {
           setError(err.message);
           toast.error(err.message);
@@ -229,18 +377,21 @@ const AuthForm = ({ mode }) => {
     }
   };
 
+  // ================================ Forgot Password Handling =========================================
+
   const handleForgotPassword = async () => {
     if (!email) {
       setError("Please enter your registered email.");
       toast.error("Please enter your registered email.");
       return;
     }
-
+    // Check if email exists in Firestore
     try {
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("email", "==", email));
       const querySnapshot = await getDocs(q);
 
+      // Email not found
       if (querySnapshot.empty) {
         setError("Email not found. Please check or register first.");
         toast.error("Email not found. Please check or register first.");
@@ -249,7 +400,7 @@ const AuthForm = ({ mode }) => {
 
       // Send password reset email with redirect
       await sendPasswordResetEmail(auth, email, {
-        url: "http://localhost:3000/reset-password",
+        url: "http://localhost:3000/reset-password", // Redirect URL after reset
         handleCodeInApp: true,
       });
 
@@ -363,7 +514,6 @@ const AuthForm = ({ mode }) => {
           {mode === "login" && (
             <div className="w-full flex items-center justify-between mt-4 text-gray-500/80">
               {/* Remember Me */}
-
               <div className="flex items-center gap-2">
                 <input
                   className="h-5 w-5"

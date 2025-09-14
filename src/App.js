@@ -7,6 +7,9 @@ import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ActionHandler from './pages/ActionHandler';
+import ProtectedRoute from './components/ProtectedRoute';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
   return (
@@ -16,9 +19,31 @@ function App() {
         <Route path="/action" element={<ActionHandler />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/dashboard" element={<Dashboard/>} />
-        <Route path="/admin-dashboard" element={<h1>Admin Dashboard</h1>} />
-        <Route path="/teacher-dashboard" element={<h1>Teacher Dashboard</h1>} />
+        
+        <Route
+    path="/dashboard"
+    element={
+      <ProtectedRoute allowedRoles={["user"]}>
+        <Dashboard />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/admin-dashboard"
+    element={
+      <ProtectedRoute allowedRoles={["admin", "superadmin"]}>
+        <AdminDashboard />
+      </ProtectedRoute>
+    }
+  />
+  <Route
+    path="/superadmin-dashboard"
+    element={
+      <ProtectedRoute allowedRoles={["superadmin"]}>
+        <SuperAdminDashboard />
+      </ProtectedRoute>
+    }
+  />
       </Routes>
       <ToastContainer position="top-right" autoClose={3000} />
     </Router>
