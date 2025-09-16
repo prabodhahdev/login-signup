@@ -1,11 +1,12 @@
 import React from 'react'
 import LogoutButton from '../components/LogoutButton'
+import SuperAdminNavbar from '../components/Navbar/SuperAdminNavbar'
 
 const SuperAdminDashboard = () => {
   return (
     <div>
-      <h1>Super-Admin-Dashboard</h1>
-      <LogoutButton/>
+      <SuperAdminNavbar/>
+      < LogoutButton />
     </div>
   )
 }
