@@ -8,9 +8,9 @@ const LogoutButton = () => {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth); // Firebase clears session + tokens
-      localStorage.removeItem("role"); // clear role
-      navigate("/"); // go back to login
+      await signOut(auth); 
+      localStorage.removeItem("role"); 
+      navigate("/"); 
     } catch (error) {
       console.error("Logout failed:", error);
     }

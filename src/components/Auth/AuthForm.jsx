@@ -1,6 +1,6 @@
 import React, {  useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, db } from "../firebase/firebase";
+import { auth, db } from "../../firebase/firebase";
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
@@ -377,42 +377,7 @@ const AuthForm = ({ mode }) => {
     }
   };
 
-  // ================================ Forgot Password Handling =========================================
-
-  const handleForgotPassword = async () => {
-    if (!email) {
-      setError("Please enter your registered email.");
-      toast.error("Please enter your registered email.");
-      return;
-    }
-    // Check if email exists in Firestore
-    try {
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email));
-      const querySnapshot = await getDocs(q);
-
-      // Email not found
-      if (querySnapshot.empty) {
-        setError("Email not found. Please check or register first.");
-        toast.error("Email not found. Please check or register first.");
-        return;
-      }
-
-      // Send password reset email with redirect
-      await sendPasswordResetEmail(auth, email, {
-        url: "http://localhost:3000/reset-password", // Redirect URL after reset
-        handleCodeInApp: true,
-      });
-
-      toast.success(
-        "Password reset initiated. Reset link sent to registered email"
-      );
-      setError("");
-    } catch (err) {
-      setError(err.message);
-      toast.error(err.message);
-    }
-  };
+ 
 
   return (
     <div className="auth-form flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 ">
@@ -528,11 +493,8 @@ const AuthForm = ({ mode }) => {
               </div>
               <a
                 className="text-sm underline hover:text-indigo-500"
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleForgotPassword();
-                }}
+                href="/forgot-password"
+              
               >
                 Forgot password?
               </a>

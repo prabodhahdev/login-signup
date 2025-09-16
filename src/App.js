@@ -10,6 +10,7 @@ import ActionHandler from './pages/ActionHandler';
 import ProtectedRoute from './components/ProtectedRoute';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import ForgotPassword from './components/Auth/ForgotPassword';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path="/action" element={<ActionHandler />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path='/forgot-password' element={<ForgotPassword/>} />
         
         <Route
     path="/dashboard"

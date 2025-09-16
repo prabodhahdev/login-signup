@@ -38,7 +38,7 @@ const ActionHandler = () => {
     }
   }, [location.search, navigate, auth]);
 
-  return <div>Processing...</div>;
+  return null;
 };
 
 export default ActionHandler;
