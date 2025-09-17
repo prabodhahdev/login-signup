@@ -2,21 +2,22 @@ import "./App.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-import Dashboard from "./pages/AdminDashboard";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ActionHandler from "./pages/ActionHandler";
 import ProtectedRoute from "./components/ProtectedRoute";
-import SuperAdminDashboard from "./layouts/SuperAdminDashboard";
 import ForgotPassword from "./components/Auth/ForgotPassword";
 import ViewAllUser from "./pages/admin/ViewAllUser";
-import AddUser from "./pages/admin/AddUser";
 import LockedUsers from "./pages/admin/LockedUsers";
-import ViewAllAdmin from "./pages/admin/superAdmin/ViewAllAdmin";
-import AddAdmin from "./pages/admin/superAdmin/AddAdmin";
-import ProfilePage from "./pages/ProfilePage";
-import AdminDashboard from "./layouts/AdminDashboard";
+import ViewAllAdmin from "./pages/superAdmin/ViewAllAdmin";
+import AddAdmin from "./pages/superAdmin/AddAdmin";
+import ProfilePage from "./pages/user/ProfilePage";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import SuperAdminDashboard from "./pages/superAdmin/SuperAdminDashboard";
+import AddUserPage from "./pages/admin/AddUserPage";
+import UserDashboard from "./pages/user/UserDashboard";
+import Dashboard from "./pages/admin/Dashboard";
+import LoginPage from "./pages/user/LoginPage";
+import RegisterPage from "./pages/user/RegisterPage";
+import ResetPasswordPage from "./pages/user/ResetPasswordPage";
 
 function App() {
   return (
@@ -32,26 +33,25 @@ function App() {
           path="/dashboard"
           element={
             <ProtectedRoute allowedRoles={["user"]}>
-              <Dashboard />
+              <UserDashboard />
             </ProtectedRoute>
           }
         />
-  <Route
-  path="/admin-dashboard"
-  element={
-    <ProtectedRoute allowedRoles={["admin", "superadmin"]}>
-      <AdminDashboard />
-    </ProtectedRoute>
-  }
->
-  {/* Nested routes */}
-  <Route index element={<Dashboard />} /> {/* default page */}
-  <Route path="users" element={<ViewAllUser />} />
-  <Route path="users/add" element={<AddUser />} />
-  <Route path="users/locked" element={<LockedUsers />} />
-  <Route path="profile" element={<ProfilePage />} />
-</Route>
-
+        <Route
+          path="/admin-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        >
+          {/* Nested routes */}
+          <Route index element={<Dashboard />} /> {/* default page */}
+          <Route path="users" element={<ViewAllUser />} />
+          <Route path="users/add" element={<AddUserPage />} />
+          <Route path="users/locked" element={<LockedUsers />} />
+          <Route path="profile" element={<ProfilePage />} />
+        </Route>
 
         <Route
           path="/superadmin-dashboard"
@@ -66,7 +66,7 @@ function App() {
 
           {/* User Management */}
           <Route path="users" element={<ViewAllUser />} />
-          <Route path="users/add" element={<AddUser />} />
+          <Route path="users/add" element={<AddUserPage />} />
           <Route path="users/locked" element={<LockedUsers />} />
 
           {/* Admin Management */}
