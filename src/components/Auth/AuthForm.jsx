@@ -1,4 +1,4 @@
-import React, {  useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../../firebase/firebase";
 import {
@@ -21,6 +21,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { toast } from "react-toastify";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/solid";
 
 const LOCK_DURATION = 1 * 60 * 1000; // 1 minutes
 const MAX_FAILED_ATTEMPTS = 2;
@@ -44,6 +45,8 @@ const AuthForm = ({ mode }) => {
   const [phoneError, setPhoneError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Redirect based on role
   const redirectBasedOnRole = (role) => {
@@ -377,8 +380,6 @@ const AuthForm = ({ mode }) => {
     }
   };
 
- 
-
   return (
     <div className="auth-form flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 ">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
@@ -460,17 +461,31 @@ const AuthForm = ({ mode }) => {
           )}
 
           {/* Password */}
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              if (mode === "signup") validatePassword(e.target.value);
-            }}
-            className="w-full h-12 px-4 mb-3 border border-gray-300 rounded-lg outline-none"
-            required
-          />
+          <div className="relative w-full mb-3">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (mode === "signup") validatePassword(e.target.value);
+              }}
+              className="w-full h-12 px-4 pr-10 border border-gray-300 rounded-lg outline-none"
+              required
+            />
+            {/* Eye Icon */}
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-500"
+            >
+              {showPassword ? (
+                <EyeSlashIcon className="w-4 h-4" />
+              ) : (
+                <EyeIcon className="w-4 h-4" />
+              )}
+            </button>
+          </div>
           {mode === "signup" && passwordError && (
             <p className="text-red-500 text-sm mb-2">{passwordError}</p>
           )}
@@ -494,26 +509,40 @@ const AuthForm = ({ mode }) => {
               <a
                 className="text-sm underline hover:text-indigo-500"
                 href="/forgot-password"
-              
               >
                 Forgot password?
               </a>
             </div>
           )}
 
-          {/* Confirm Password */}
+          {/* Confirm Password Input*/}
           {mode === "signup" && (
-            <input
-              type="password"
-              placeholder="Confirm Password"
-              value={confirmPassword}
-              onChange={(e) => {
-                setConfirmPassword(e.target.value);
-                validateConfirmPassword(e.target.value);
-              }}
-              className="w-full h-12 px-4 mb-3 border border-gray-300 rounded-lg outline-none"
-              required
-            />
+            <div className="relative w-full mb-3">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Confirm Password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  validateConfirmPassword(e.target.value);
+                }}
+                className="w-full h-12 px-4 pr-10 border border-gray-300 rounded-lg outline-none"
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-500"
+                onMouseDown={() => setShowConfirmPassword(true)}
+                onMouseUp={() => setShowConfirmPassword(false)}
+                onMouseLeave={() => setShowConfirmPassword(false)}
+              >
+                {showConfirmPassword ? (
+                  <EyeSlashIcon className="w-4 h-4" />
+                ) : (
+                  <EyeIcon className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           )}
           {confirmPasswordError && (
             <p className="text-red-500 text-sm mb-2">{confirmPasswordError}</p>
